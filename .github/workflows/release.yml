@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to build and publish (for example v0.4.0)'
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - name: Build and test
+        run: ./build.ps1 -Test -Version $env:RELEASE_TAG
+
+      - name: Check application startup
+        run: |
+          $app = Start-Process -FilePath ./bin/2ctrl.exe -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($app.ExitCode -ne 0) { throw "Startup check failed: $($app.ExitCode)" }
+
+      - name: Package portable application
+        run: |
+          Compress-Archive -LiteralPath ./bin/2ctrl.exe, ./bin/2ctrl.exe.config -DestinationPath ./bin/2ctrl-windows.zip
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $assets = @('./bin/2ctrl.exe', './bin/2ctrl.exe.config', './bin/2ctrl-windows.zip')
+          & gh release view $env:RELEASE_TAG --json tagName
+          if ($LASTEXITCODE -eq 0) {
+            & gh release upload $env:RELEASE_TAG @assets --clobber
+            if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
+            exit 0
+          }
+          $releaseArgs = @(
+            'release', 'create', $env:RELEASE_TAG,
+            $assets[0], $assets[1], $assets[2],
+            '--verify-tag', '--generate-notes', '--title', $env:RELEASE_TAG,
+            '--notes', 'Download 2ctrl-windows.zip and extract it, then run 2ctrl.exe. Alternatively, download 2ctrl.exe and 2ctrl.exe.config into the same folder. Requires Windows 10 or later with .NET Framework 4.8.'
+          )
+          if ($env:RELEASE_TAG.Contains('-')) { $releaseArgs += '--prerelease' }
+          & gh @releaseArgs
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed.' }

@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+
+# Editor and local files
+.vs/
+*.user
+*.suo
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Local secrets
+.env
+.env.*
+!.env.example
