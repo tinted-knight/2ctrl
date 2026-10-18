@@ -1,5 +1,7 @@
 ﻿# 2ctrl
 
+This project was developed with the assistance of LLMs, including ChatGPT and Codex.
+
 Windows tray prototype: a solo left Ctrl selects English, a solo right Ctrl selects Russian. Each key selects a specific installed layout, rather than cycling through languages. Inspired by the behavior of 2cmd; this is an independent Windows implementation.
 
 ## Download
