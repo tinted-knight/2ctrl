@@ -2,7 +2,7 @@
 
 This project was developed with the assistance of LLMs, including ChatGPT and Codex.
 
-Windows tray prototype: a solo left Ctrl selects English, a solo right Ctrl selects Russian. Each key selects a specific installed layout, rather than cycling through languages. Inspired by the behavior of 2cmd; this is an independent Windows implementation.
+Windows tray prototype: assign a keyboard layout to each Ctrl key, then tap left or right Ctrl on its own to select that layout. Each key selects a specific installed layout, rather than cycling through languages. Inspired by the behavior of 2cmd; this is an independent Windows implementation.
 
 ## Download
 
@@ -17,7 +17,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 .\bin\2ctrl.exe
 ```
 
-Right-click the notification-area icon to choose installed layouts for either Ctrl, pause, toggle **Run on startup**, or exit. Expand the hidden tray icons if necessary. Defaults choose the first installed English and Russian layouts; a missing language remains unconfigured. Install missing layouts through Windows settings, then choose them in the menu. Settings are saved to `%LOCALAPPDATA%\2ctrl\settings.xml`.
+Right-click the notification-area icon to assign any installed keyboard layout to each Ctrl key, pause, toggle **Run on startup**, or exit. Expand the hidden tray icons if necessary. Install additional layouts through Windows settings, then choose them in the menu. Settings are saved to `%LOCALAPPDATA%\2ctrl\settings.xml`.
+
+On first launch, the app preselects the first installed English layout for left Ctrl and Russian layout for right Ctrl, if available. A key remains unconfigured if its default language is missing. You can change either assignment in the tray menu.
 
 **Run on startup** is off by default. Enabling it registers the current executable for the current user's Windows sign-in, without administrator rights; disabling it removes that registration. Keep the application in a permanent folder. If you move it, enable the option again from the new location. The checkbox reflects this copy's registration in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (`2ctrl`); Windows Task Manager can separately disable startup execution.
 
@@ -52,13 +54,13 @@ If a release already exists for the tag, the workflow uploads the built files to
 
 `TapDetector.cs` contains the independently tested state machine. `Program.cs` installs low-level keyboard/mouse hooks, provides the tray UI and requests a concrete HKL via `WM_INPUTLANGCHANGEREQUEST` on the foreground application's focused window. Work is queued outside the hook callback. A delayed check reports whether the target thread's layout matches the request; posting a message alone is not considered proof of success.
 
-This is a prototype for ordinary desktop applications and EN/RU keyboard layouts. An application may ignore the request. Elevated applications, UWP/IME input, remote desktops, games and secure desktops are not guaranteed. It does not change layouts on the lock/login screen. No administrator rights are requested. Hooks run on the UI thread; a stalled message loop can cause Windows to remove a low-level hook. Recovery from desktop/session transitions and hook timeouts needs hardening before calling this production-ready.
+This is a prototype for ordinary desktop applications using installed Windows keyboard layouts. Compatibility with different layouts and applications needs interactive testing; an application may ignore the request. Elevated applications, UWP/IME input, remote desktops, games and secure desktops are not guaranteed. It does not change layouts on the lock/login screen. No administrator rights are requested. Hooks run on the UI thread; a stalled message loop can cause Windows to remove a low-level hook. Recovery from desktop/session transitions and hook timeouts needs hardening before calling this production-ready.
 
 The tests cover recognition, cancellation, shortcut ordering, repeats, both Ctrl keys, startup state and AltGr/injected input. Real input and layout switching still require interactive Windows checks.
 
 ## Manual acceptance checks
 
-1. In Notepad, choose EN with left Ctrl and RU with right Ctrl; type after each tap and inspect the tray status.
+1. Assign different installed layouts to left and right Ctrl in the tray menu. In Notepad, tap each Ctrl on its own, type after each tap, and inspect the tray status.
 2. Repeat in the browser and the editor used daily, including more than two installed layouts.
 3. Check Ctrl+C/V/Z, Ctrl+Shift combinations and Ctrl+click without accidental layout switches.
 4. Check both Ctrl keys, wheel activity, long holds, rapid taps and AltGr if available.
